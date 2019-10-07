@@ -3,11 +3,15 @@ const ganache = require('ganache-cli');
 
 // Whenever we use Constructor function we capatalise it.
 const Web3 = require('web3');
-const web3 = new Web3(ganache.provider());
+
+provider = ganache.provider()
+const web3 = new Web3(provider);
 const { interface, bytecode } = require('../compile');
+
 
 let accounts;
 let inbox;
+const INITIAL_STRING = 'Hi There!';
 
 /*
 
@@ -31,10 +35,29 @@ beforeEach(async () => {
 	inbox = await new web3.eth.Contract(JSON.parse(interface))
 		.deploy({ data: bytecode,  arguments: ['Hi There!']})
 		.send({ from: accounts[0], gas: '1000000' });
+
+	inbox.setProvider(provider);
 });
 
 describe('Inbox', () => {
 	it('deploys a contract', () => {
-		console.log(inbox);
+		// Check if the value passing to assert.ok() is NULL of not.
+		assert.ok(inbox.options.address);
 	});
-});
+
+	// Calling a function which does not modifies any data on blockchain, rather only returns something is both instantaneous
+	// and async() in nature.
+	it('has a default message', async () => {
+		const message = await inbox.methods.message().call();
+		assert.equal(message, 'Hi There!');
+	});
+
+	// Whenever we transact a function we usually do not assign the result to any variable because we gets a transaction hash
+	// for every such transaction.
+	it('can change the message', async() => {
+		await inbox.methods.setMessage('Bye There').send({ from: accounts[0] });
+		const message = await inbox.methods.message().call();
+		assert.equal(message, 'Bye There');
+	});
+
+}); 
